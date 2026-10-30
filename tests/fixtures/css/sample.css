@@ -1,0 +1,11 @@
+:root {
+  --brand: #336699;
+}
+
+.list {
+  display: flex;
+}
+
+#book-list .row {
+  color: var(--brand);
+}

@@ -1,0 +1,63 @@
+#!/bin/sh
+# Launcher: finds the codemap binary and runs it with the given arguments. Never blocks a search.
+#
+# Order: $CODEMAP_BIN, ~/.cargo/bin, target/release of this checkout, ~/.local/bin (install.sh),
+# the download cache, then a download of the release matching this plugin version (SHA-256 checked).
+# With CODEMAP_OFFLINE=1 nothing is downloaded. When no binary is found: `hook` exits 0 with no output
+# so the search runs untouched; every other command exits 1 with the install command.
+OWNER="${CODEMAP_OWNER:-LIVELUCKY}"
+here="$(cd "$(dirname "$0")/.." && pwd)"
+version="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$here/.claude-plugin/plugin.json" 2>/dev/null | head -1)"
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/codemap/bin/${version:-unknown}"
+
+for candidate in "${CODEMAP_BIN:-}" "$HOME/.cargo/bin/codemap" "$here/target/release/codemap" \
+  "$HOME/.local/bin/codemap" "$cache/codemap"; do
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+detect_target() {
+  if [ -n "${CODEMAP_TARGET:-}" ]; then echo "$CODEMAP_TARGET"; return; fi
+  case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64) echo aarch64-apple-darwin ;;
+    Darwin-x86_64) echo x86_64-apple-darwin ;;
+    Linux-x86_64) echo x86_64-unknown-linux-gnu ;;
+    Linux-aarch64 | Linux-arm64) echo aarch64-unknown-linux-gnu ;;
+  esac
+}
+
+sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi
+}
+
+download() {
+  [ "${CODEMAP_OFFLINE:-0}" = 1 ] && return 1
+  target="$(detect_target)"
+  [ -n "$target" ] && [ -n "$version" ] || return 1
+  base="${CODEMAP_RELEASE_BASE:-https://github.com/$OWNER/codemap/releases/download/v$version}"
+  archive="codemap-$target.tar.gz"
+  tmp="$(mktemp -d)" || return 1
+  curl -fsSL "$base/$archive" -o "$tmp/$archive" 2>/dev/null || { rm -rf "$tmp"; return 1; }
+  curl -fsSL "$base/SHA256SUMS" -o "$tmp/SHA256SUMS" 2>/dev/null || { rm -rf "$tmp"; return 1; }
+  expected="$(grep " $archive\$" "$tmp/SHA256SUMS" | cut -d' ' -f1)"
+  if [ -z "$expected" ] || [ "$expected" != "$(sha256 "$tmp/$archive")" ]; then
+    echo "codemap: checksum mismatch for $archive, not using it" >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  mkdir -p "$cache" && tar -xzf "$tmp/$archive" -C "$cache" && chmod +x "$cache/codemap"
+  status=$?
+  rm -rf "$tmp"
+  return $status
+}
+
+if download && [ -x "$cache/codemap" ]; then
+  exec "$cache/codemap" "$@"
+fi
+
+echo "codemap: no binary found; run: cargo install --git https://github.com/$OWNER/codemap  (or install.sh)" >&2
+if [ "${1:-}" = hook ]; then
+  exit 0
+fi
+exit 1

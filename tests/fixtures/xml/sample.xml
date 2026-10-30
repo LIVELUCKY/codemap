@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <string name="app_name">Shop</string>
+    <color name="brand">#336699</color>
+    <ImageView android:id="@+id/logo" android:src="@drawable/ic_logo" />
+    <a href="https://example.com/api/v1/books" />
+</resources>

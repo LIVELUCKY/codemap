@@ -1,0 +1,9 @@
+#!/bin/sh
+# Stands in for `claude -p ... --output-format json` in the benchmark tests. With the plugin disabled
+# (configuration A passes enabledPlugins:false) it answers with the wrong line and more turns.
+case "$*" in
+  *enabledPlugins*) turns=8; cost=0.12; result="I think it is in src/app/Book.kt:40" ;;
+  *) turns=4; cost=0.15; result="Defined at src/app/Book.kt:12, served by server/Routes.kt line 4" ;;
+esac
+printf '{"type":"result","num_turns":%s,"duration_ms":9000,"total_cost_usd":%s,"result":"%s","usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":10,"cache_read_input_tokens":1000}}\n' \
+  "$turns" "$cost" "$result"

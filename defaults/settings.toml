@@ -1,0 +1,219 @@
+# codemap's defaults. Built into the binary; nothing here is read at run time.
+#
+# Every value can be changed under "settings" in a repository's .codemap.json, or for all repositories
+# in the user's codemap/config.json (repository wins). Tables merge key by key, so an override names
+# only what it changes; a list replaces the default list. Example:
+#
+#   {"settings": {"limits": {"answerLines": 40}, "scope": {"testDirs": ["test", "e2e"]}}}
+#
+# Nothing here guesses about a code base: a list that would describe one (folder names, word lists,
+# keywords) is empty and yours to fill.
+#
+# The texts the agent is shown live next to this file in prompts/ and can be overridden the same way
+# under "prompts".
+
+[limits]
+# Threads that parse and index; 0 uses one per CPU core.
+threads = 0
+# Lines an answer shows before "... N more (--all)".
+answerLines = 25
+# Close names suggested when a name is not found.
+nearestNames = 5
+# Files larger than this are not parsed, and the text of a file kept for full-text search is cut here.
+indexFileBytes = 1048576
+textBytes = 262144
+# A grep answer cuts each matched line to this many characters.
+findLineChars = 120
+# Seconds a session start (or an MCP client connecting) spends indexing siblings; the rest waits for
+# the first query.
+startBudgetSeconds = 5.0
+# Days an index may go unused before codemap deletes it (also when its repository is gone).
+cacheDays = 14
+
+[show]
+# Definitions `codemap show` prints for one name, and source lines per definition unless --all.
+definitions = 5
+lines = 80
+
+[logs]
+# Characters of a log line shown, and continuation lines (stack frames) kept and shown per entry.
+width = 200
+detailKept = 20
+detailShown = 5
+
+[search]
+# Files per repository ranked before the answer is cut.
+perRepo = 50
+# The constant of reciprocal rank fusion; 60 is the value the method was published with.
+rrfK = 60.0
+# How much each rewritten form of a query counts.
+weightOriginal = 1.0
+weightRelated = 0.5
+weightIdentifiers = 0.7
+# How much the ranking of files by the query words in their path counts.
+weightPaths = 0.7
+# Files the ranking by meaning (the bundled code embedding model) adds to the ranking by words: its
+# best ones only, as some file is always the closest. A file both rankings found comes first, the
+# others take turns. 0 switches the model off: no vectors are computed or stored.
+semanticFiles = 10
+# Identifiers from the code base added per query word, and the shortest word that gets them.
+identifiersPerWord = 5
+identifierMinLength = 4
+# The Snowball stemmer for words ("refreshing" finds "refresh"): Arabic, Danish, Dutch, English,
+# Finnish, French, German, Greek, Hungarian, Italian, Norwegian, Portuguese, Romanian, Russian,
+# Spanish, Swedish, Tamil or Turkish. Remove the line for none. English because code is named in it.
+stemmer = "English"
+# A name whose letters appear in order in other names (BaseVM): the share of the best match's score
+# another name needs to be listed too, so weak scattered matches are left out.
+fuzzyKeep = 0.5
+# When no name has the letters in order: how alike two names must be, by Damerau-Levenshtein
+# similarity from 0 to 1 (a swapped pair of letters is one edit), for one to count as a typo of the other.
+typoSimilarity = 0.8
+# Query words dropped before searching, for example ["the", "how"].
+stopwords = []
+
+# Words searched alongside a query word, for example {"auth": ["token", "session"]}.
+[search.synonyms]
+
+# Where a file sits, for ranking: main before test before generated and vendored. Files git marks
+# `linguist-vendored` or `linguist-generated` in .gitattributes are vendored or generated. The lists
+# add globs: a folder list matches a folder name or a folder path ("vendor", "app/build"), testFiles
+# a file name or path ("*Test.kt").
+[scope]
+vendoredDirs = []
+generatedDirs = []
+testDirs = []
+testFiles = []
+
+[kinds]
+# Definition kinds a facade rename applies to across a bridge; classes keep their name.
+facades = ["function", "property", "constant", "variable", "method"]
+
+[parse]
+# Keywords the fallback parser takes as a declaration ("class", "def") in a language without a grammar,
+# and in a file whose grammar parse has errors. Without any, such a file has no definitions; grep and
+# full-text search still find it.
+declarationKeywords = []
+# Extensions of files without a grammar that are prose, not code ("text" is a file without an
+# extension): the keywords are not applied there, and the headings (a line underlined with === or
+# ---, or an AsciiDoc "== Title") are the definitions.
+proseExtensions = ["text", "txt", "rst", "adoc", "asciidoc", "log", "csv", "tsv"]
+
+# How names cross languages. `{file}` is the defining file's name without its extension, `{name}` the
+# definition's name. `importSeparator` splits an import path into parts (default "/").
+[[bridges]]
+name = "kmp-swift"
+fromLanguage = "kotlin"
+toLanguage = "swift"
+rename = "{file}Kt"
+
+[[bridges]]
+name = "ts-import"
+fromLanguage = "typescript"
+toLanguage = "typescript"
+rename = "{name}"
+
+[[bridges]]
+name = "py-import"
+fromLanguage = "python"
+toLanguage = "python"
+rename = "{name}"
+importSeparator = "."
+
+# Languages a bridge rule for the key also covers.
+[languageFamilies]
+typescript = ["tsx", "javascript"]
+
+# What the Bash hook recognises in a command line. The grep, egrep, rg and git grep options it
+# reproduces are built in; a command with any other option runs as written.
+[shell]
+# Words that join commands; a search piped into something else is left alone.
+separators = ["|", "&&", "||", ";"]
+# Options whose next word is a glob for the program, not the shell (`find -name *.kt`).
+globOptions = [
+  "-name", "-iname", "-path", "-ipath", "-wholename", "-regex", "-g", "--glob", "--iglob", "--include",
+  "--exclude", "--exclude-dir",
+]
+# codemap subcommands that change something outside the index or read files outside the repository
+# (`logs` opens any path); every other codemap command, the bare `codemap <query>` included, only
+# reads the workspace and is approved without asking. These two lists are taken from the defaults and
+# the user's own config only: a repository cannot change what is approved.
+writeCommands = ["setup", "self-update", "update", "hook", "session-start", "mcp", "emit", "bench", "logs"]
+# Programs a codemap query may be piped into and still be approved (`codemap X | head -40`).
+readOnlyFilters = ["head", "tail", "grep", "wc", "sort", "uniq", "cut"]
+
+# Tools besides Bash, by the shape of their input, for repositories that list them in `searchTools`.
+[tools]
+grep = ["Grep"]
+ideGrep = ["mcp__ide-tools__studio_grep"]
+ideSymbol = ["mcp__ide-tools__studio_find_declaration", "mcp__ide-tools__studio_find_usages"]
+
+# Agents `codemap setup` knows. `format` is one of: claudePlugin, mcpServers, copilotCli, vscode, zed,
+# codexToml. Paths start at `~` (the home folder) or `{config}` (the platform config folder); `project`
+# is relative to the repository and absent when the agent has no project config. `detect` is the folder
+# whose presence means the agent is installed.
+[[agents]]
+name = "claude"
+format = "claudePlugin"
+detect = "~/.claude"
+
+[[agents]]
+name = "codex"
+format = "codexToml"
+detect = "~/.codex"
+global = "~/.codex/config.toml"
+project = ".codex/config.toml"
+
+[[agents]]
+name = "copilot"
+format = "copilotCli"
+detect = "~/.copilot"
+global = "~/.copilot/mcp-config.json"
+project = ".copilot/mcp-config.json"
+
+[[agents]]
+name = "vscode"
+format = "vscode"
+detect = "{config}/Code"
+global = "{config}/Code/User/mcp.json"
+project = ".vscode/mcp.json"
+
+[[agents]]
+name = "cursor"
+format = "mcpServers"
+detect = "~/.cursor"
+global = "~/.cursor/mcp.json"
+project = ".cursor/mcp.json"
+
+[[agents]]
+name = "windsurf"
+format = "mcpServers"
+detect = "~/.codeium/windsurf"
+global = "~/.codeium/windsurf/mcp_config.json"
+
+[[agents]]
+name = "zed"
+format = "zed"
+detect = "~/.config/zed"
+global = "~/.config/zed/settings.json"
+
+[[agents]]
+name = "gemini"
+format = "mcpServers"
+detect = "~/.gemini"
+global = "~/.gemini/settings.json"
+project = ".gemini/settings.json"
+
+[[agents]]
+name = "antigravity"
+format = "mcpServers"
+detect = "~/.gemini/antigravity"
+global = "~/.gemini/config/mcp_config.json"
+project = ".agents/mcp_config.json"
+
+[[agents]]
+name = "junie"
+format = "mcpServers"
+detect = "~/.junie"
+global = "~/.junie/mcp/mcp.json"
+project = ".junie/mcp/mcp.json"

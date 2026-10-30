@@ -1,0 +1,153 @@
+;; synced from tree-sitter-dart-0.3.0 (queries/tags.scm) by scripts/sync-queries; do not edit, put additions in extra.scm
+;; licence: see the LICENSE file of that crate
+; tags.scm - Dart symbol tagging queries
+
+; Classes
+(class_declaration
+  name: (identifier) @name) @definition.class
+
+; Mixins
+(mixin_declaration
+  (identifier) @name) @definition.class
+
+; Extensions
+(extension_declaration
+  name: (identifier) @name) @definition.class
+
+; Extension types
+(extension_type_declaration
+  name: (extension_type_name
+    (identifier) @name)) @definition.class
+
+; Enums
+(enum_declaration
+  name: (identifier) @name) @definition.class
+
+; Top-level functions
+(function_declaration
+  signature: (function_signature
+    name: (identifier) @name)) @definition.function
+
+; Top-level getters
+(getter_declaration
+  signature: (getter_signature
+    name: (identifier) @name)) @definition.function
+
+; Top-level setters
+(setter_declaration
+  signature: (setter_signature
+    name: (identifier) @name)) @definition.function
+
+; External top-level functions/getters/setters
+(external_function_declaration
+  signature: (function_signature
+    name: (identifier) @name)) @definition.function
+
+(external_getter_declaration
+  signature: (getter_signature
+    name: (identifier) @name)) @definition.function
+
+(external_setter_declaration
+  signature: (setter_signature
+    name: (identifier) @name)) @definition.function
+
+; Top-level variables
+(top_level_variable_declaration
+  (static_final_declaration_list
+    (static_final_declaration
+      name: (identifier) @name))) @definition.variable
+
+(top_level_variable_declaration
+  (initialized_identifier_list
+    (initialized_identifier
+      name: (identifier) @name))) @definition.variable
+
+(external_variable_declaration
+  (identifier_list
+    (identifier) @name)) @definition.variable
+
+; Methods
+(method_signature
+  (function_signature
+    name: (identifier) @name)) @definition.method
+
+; Getters (as methods)
+(method_signature
+  (getter_signature
+    name: (identifier) @name)) @definition.method
+
+; Setters (as methods)
+(method_signature
+  (setter_signature
+    name: (identifier) @name)) @definition.method
+
+; Operator methods
+(method_signature
+  (operator_signature
+    operator: _ @name)) @definition.method
+
+; Constructors
+(constructor_signature
+  name: (identifier) @name) @definition.method
+
+; Const constructors
+(constant_constructor_signature
+  name: (identifier) @name) @definition.method
+
+; Factory constructors
+(factory_constructor_signature
+  name: (identifier) @name) @definition.method
+
+; Redirecting factory constructors (name:-qualified so the redirect target
+; is not tagged as a definition)
+(redirecting_factory_constructor_signature
+  name: (identifier) @name) @definition.method
+
+; Named primary constructors (Dart 3.13)
+(primary_constructor
+  name: (identifier) @name) @definition.method
+
+; Typedefs
+(type_alias
+  (type_identifier) @name) @definition.type
+
+; Enum constants
+(enum_entry
+  name: (identifier) @name) @definition.constant
+
+; Function call references
+(call_expression
+  function: (identifier) @name) @reference.call
+
+(call_expression
+  function: [
+    (member_expression property: (identifier) @name)
+    (null_aware_member_expression property: (identifier) @name)
+  ]) @reference.call
+
+(cascade_call_expression
+  property: (identifier) @name) @reference.call
+
+(call_expression
+  function: (static_member_shorthand
+    (identifier) @name)) @reference.call
+
+; These tag the first segment of a two-segment type. That is the class in
+; `const EdgeInsets.all()` but the import prefix in `new p.Foo()`.
+(new_expression
+  type: (type
+    .
+    (type_identifier) @name)) @reference.class
+
+(const_object_expression
+  type: (type
+    .
+    (type_identifier) @name)) @reference.class
+
+(constructor_invocation
+  type: (type_identifier) @name) @reference.class
+
+(interfaces
+  (type
+    .
+    (type_identifier) @name) @reference.implementation)

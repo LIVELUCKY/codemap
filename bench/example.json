@@ -1,0 +1,30 @@
+{
+  "materialise": "../tests/fixtures/workspace",
+  "workspace": "app",
+  "questions": [
+    {
+      "q": "Where is BookRoute defined in this repository? Answer with file:line only.",
+      "expect": ["src/commonMain/kotlin/app/BookRoute.kt:12"]
+    },
+    {
+      "q": "Which classes implement BookPort, test fakes included? Answer with file:line for each.",
+      "expect": ["BookRoute.kt:7", "FakeBookPort.kt:3"]
+    },
+    {
+      "q": "Where are the expect declaration of platformName and its actual implementations? Answer with file:line for each.",
+      "expect": ["Platform.kt:3", "Platform.android.kt:3", "Platform.ios.kt:3"]
+    },
+    {
+      "q": "Which repositories next to this one define or use the route /api/v1/books/{id}? Answer with repository and file:line for each.",
+      "expect": ["BookRoute.kt:11", "Routes.kt:3", "api.ts:1"]
+    },
+    {
+      "q": "Which Swift code calls the Kotlin function platformName? Answer with file:line.",
+      "expect": ["App.swift:5"]
+    },
+    {
+      "q": "Where is the OkHttp dependency declared? Answer with file:line.",
+      "expect": ["libs.versions.toml:1"]
+    }
+  ]
+}

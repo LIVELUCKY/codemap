@@ -1,0 +1,7 @@
+name: sample
+api:
+  base: /api/v1/books
+  timeout: 30
+features:
+  - a
+  - b

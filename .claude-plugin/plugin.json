@@ -1,0 +1,7 @@
+{
+  "name": "codemap",
+  "version": "0.1.0",
+  "description": "One-step code lookup: answers an agent's searches from a cross-repository, cross-language index.",
+  "license": "MIT",
+  "keywords": ["code-search", "index", "hooks"]
+}

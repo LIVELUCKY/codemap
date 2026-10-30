@@ -1,0 +1,49 @@
+name: pr-policy
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  title:
+    name: conventional title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@e32d7e603df1aa1ba07e981f2a23455dee596825 # v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            chore
+          requireScope: false
+
+  size:
+    name: no oversized or binary files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Reject files above 1 MiB
+        run: |
+          base="origin/${{ github.base_ref }}"
+          git diff --name-only --diff-filter=AM "$base"...HEAD | while read -r f; do
+            [ -f "$f" ] || continue
+            size="$(wc -c < "$f")"
+            if [ "$size" -gt 1048576 ]; then
+              echo "::error file=$f::$f is $size bytes (limit 1 MiB)"
+              exit 1
+            fi
+          done

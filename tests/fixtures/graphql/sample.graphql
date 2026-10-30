@@ -1,0 +1,26 @@
+interface Node {
+  id: ID!
+}
+
+type Book implements Node {
+  id: ID!
+  price: Money
+}
+
+enum Status {
+  ACTIVE
+}
+
+input BookFilter {
+  status: Status
+}
+
+query GetBook($id: ID!) {
+  book(id: $id) {
+    ...BookFields
+  }
+}
+
+fragment BookFields on Book {
+  id
+}

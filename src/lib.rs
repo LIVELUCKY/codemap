@@ -1,0 +1,11 @@
+pub mod agent;
+pub mod bench;
+pub mod cli;
+pub mod commands;
+pub mod config;
+pub mod index;
+pub mod logs;
+pub mod model;
+pub mod output;
+pub mod query;
+pub mod workspace;

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package shop.v1;
+
+import "shop/v1/money.proto";
+
+message Book {
+  string id = 1;
+  Money price = 2;
+}
+
+enum Status {
+  STATUS_UNKNOWN = 0;
+}
+
+service BookService {
+  rpc GetBook(GetBookRequest) returns (Book);
+}

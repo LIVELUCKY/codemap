@@ -1,0 +1,61 @@
+#!/bin/sh
+# Builds a synthetic git repository for timing: N source files (default 1000) across Kotlin,
+# TypeScript and Python, each with a class, a few functions, calls and one route literal.
+# Usage: scripts/synth-repo DIR [N]
+set -eu
+dir="$1"
+n="${2:-1000}"
+rm -rf "$dir"
+mkdir -p "$dir"
+cd "$dir"
+git init -q -b main
+git config user.email t@example.com
+git config user.name t
+i=0
+while [ "$i" -lt "$n" ]; do
+  pkg=$((i % 40))
+  case $((i % 3)) in
+    0)
+      mkdir -p "src/p$pkg/kotlin"
+      {
+        echo "package p$pkg"
+        echo ""
+        echo "interface Port$i { fun load$i(id: String): String }"
+        echo ""
+        echo "class Impl$i(private val api: Api) : Port$i {"
+        echo "    override fun load$i(id: String): String = api.get(\"/api/v1/books$i/{id}\")"
+        echo "    fun helper$i() = load$i(\"x\").length"
+        echo "}"
+      } > "src/p$pkg/kotlin/File$i.kt"
+      ;;
+    1)
+      mkdir -p "web/p$pkg"
+      {
+        echo "import { dep } from \"./dep\";"
+        echo ""
+        echo "export interface Port$i { load(id: string): string }"
+        echo "export class Impl$i implements Port$i {"
+        echo "  load(id: string): string { return dep(\"/api/v1/books$i/\" + id); }"
+        echo "}"
+        echo "export function helper$i() { return new Impl$i().load(\"x\"); }"
+      } > "web/p$pkg/file$i.ts"
+      ;;
+    *)
+      mkdir -p "py/p$pkg"
+      {
+        echo "from p$pkg.dep import dep"
+        echo ""
+        echo "class Impl$i:"
+        echo "    def load(self, id):"
+        echo "        return dep('/api/v1/books$i/' + id)"
+        echo ""
+        echo "def helper$i():"
+        echo "    return Impl$i().load('x')"
+      } > "py/p$pkg/file$i.py"
+      ;;
+  esac
+  i=$((i + 1))
+done
+git add -A
+git commit -q -m synthetic
+echo "$n files in $dir"

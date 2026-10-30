@@ -1,0 +1,47 @@
+#!/bin/sh
+# Copies each grammar crate's shipped queries/tags.scm into languages/<folder>/tags.scm, verbatim behind a
+# two-line header. Additions for codemap go into languages/<folder>/extra.scm, never into tags.scm.
+# Needs the crate sources in the cargo registry: run `cargo fetch` first.
+set -eu
+cd "$(dirname "$0")/.."
+registry="${CARGO_HOME:-$HOME/.cargo}/registry/src"
+
+# empty fields are printed as "-" so that `read` keeps the columns aligned
+awk -F'"' '
+  function flush() { if (name != "") print name, (crate == "" ? "-" : crate), (q == "" ? "-" : q), (up == "" ? "-" : up) }
+  /^\[\[language\]\]/ { flush(); name = ""; crate = ""; q = ""; up = "" }
+  /^name = /          { name = $2 }
+  /^crate = /         { crate = $2 }
+  /^query = /         { q = $2 }
+  /^upstream_tags = false/ { up = "skip" }
+  END                 { flush() }
+' languages/registry.toml |
+while read -r name crate q up; do
+  [ "$crate" != "-" ] || continue
+  [ "$q" != "-" ] || q=""
+  folder="${q:-$name}"
+  if [ "$up" = "skip" ]; then
+    rm -f "languages/$folder/tags.scm"
+    echo "$name: upstream tags skipped by the registry (extra.scm only)"
+    continue
+  fi
+  pkg="$(printf '%s' "$crate" | sed 's/::.*//; s/_/-/g')"
+  dir="$(find "$registry" -mindepth 2 -maxdepth 2 -type d -name "$pkg-[0-9]*" 2>/dev/null | sort -V | tail -1)"
+  if [ -z "$dir" ]; then
+    echo "$name: $pkg is not in the cargo registry (run cargo fetch)" >&2
+    continue
+  fi
+  src="$dir/queries/tags.scm"
+  if [ -f "$src" ]; then
+    mkdir -p "languages/$folder"
+    {
+      printf ';; synced from %s (queries/tags.scm) by scripts/sync-queries; do not edit, put additions in extra.scm\n' "$(basename "$dir")"
+      printf ';; licence: see the LICENSE file of that crate\n'
+      cat "$src"
+    } > "languages/$folder/tags.scm"
+    echo "$name: synced from $(basename "$dir")"
+  else
+    rm -f "languages/$folder/tags.scm"
+    echo "$name: no upstream tags query (extra.scm only)"
+  fi
+done

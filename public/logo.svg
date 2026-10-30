@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="codemap">
+  <title>codemap</title>
+  <!-- A location pin between two code brackets: the place in the code. -->
+  <g fill="none" stroke="#EA580C" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="64,70 20,128 64,186"/>
+    <polyline points="192,70 236,128 192,186"/>
+  </g>
+  <path fill="#FBBF24" fill-rule="evenodd" d="M128,206 C128,206 80,150 80,112 A48,48 0 1 1 176,112 C176,150 128,206 128,206 Z M128,92 A20,20 0 1 0 128,132 A20,20 0 1 0 128,92 Z"/>
+</svg>

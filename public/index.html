@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>codemap: code search for AI coding agents</title>
+<meta name="description" content="codemap indexes definitions, references and routes across the repositories of a workspace, so a coding agent finds code in one call instead of a chain of greps.">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<style>
+  /* Both fonts are served from this site (SIL Open Font License, texts in fonts/): no request
+     leaves for a font service, so nobody else learns who visits. */
+  @font-face {
+    font-family: "Bricolage Grotesque";
+    src: url("fonts/bricolage-grotesque.woff2") format("woff2");
+    font-weight: 200 800; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("fonts/jetbrains-mono.woff2") format("woff2");
+    font-weight: 100 800; font-style: normal; font-display: swap;
+  }
+  :root {
+    --sheet: #f6f7f9;
+    --ink: #1b1f27;
+    --soft: #5b6472;
+    --line: #dde1e8;
+    --orange: #ea580c;
+    --amber: #fbbf24;
+    --night: #171b23;
+    --night-soft: #9aa4b5;
+    --sans: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--sheet);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 1.125rem;
+    line-height: 1.55;
+  }
+  a { color: inherit; text-decoration-color: var(--orange); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  a:hover { color: var(--orange); }
+  :focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
+  code, pre, kbd { font-family: var(--mono); }
+  .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* The top of the sheet: contour lines, as on a survey map. */
+  header.top {
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--line);
+  }
+  header.top svg.contours {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  nav.bar {
+    position: relative;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 0;
+  }
+  nav.bar .name { display: flex; align-items: center; gap: .6rem; font-weight: 800; font-size: 1.3rem; text-decoration: none; }
+  nav.bar .name img { width: 2.4rem; height: 2.4rem; }
+  nav.bar .links { display: flex; gap: 1.5rem; font-size: 1rem; }
+
+  .hero {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 3rem;
+    align-items: center;
+    padding: 3.5rem 0 4.5rem;
+  }
+  .hero h1 {
+    margin: 0 0 1.25rem;
+    font-size: clamp(2.6rem, 6vw, 4.6rem);
+    line-height: .98;
+    letter-spacing: -.035em;
+    font-weight: 800;
+  }
+  .hero p.lead { margin: 0 0 2rem; max-width: 34rem; color: var(--soft); font-size: 1.25rem; }
+
+  .install {
+    display: flex; align-items: stretch;
+    max-width: 36rem;
+    background: var(--night);
+    border-radius: .7rem;
+    overflow: hidden;
+  }
+  .install code {
+    flex: 1; min-width: 0;
+    padding: .95rem 1.1rem;
+    color: #f4f6fa; font-size: .82rem;
+    white-space: nowrap; overflow-x: auto;
+  }
+  .install button {
+    border: 0; cursor: pointer;
+    padding: 0 1.2rem;
+    background: var(--orange); color: #fff;
+    font: 600 1rem var(--sans);
+  }
+  .install button:hover { background: #c2410c; }
+  .hero .after { margin: .9rem 0 0; font-size: .98rem; color: var(--soft); }
+
+  /* The terminal: the one thing on the page that answers back. */
+  .term {
+    background: var(--night);
+    border-radius: 1rem;
+    box-shadow: 0 30px 60px -30px rgba(23, 27, 35, .55);
+    overflow: hidden;
+  }
+  .term .asks { display: flex; flex-wrap: wrap; gap: .5rem; padding: 1rem 1rem .25rem; }
+  .term .asks button {
+    border: 1px solid #323a4a; background: transparent; color: var(--night-soft);
+    padding: .4rem .8rem; border-radius: 2rem; cursor: pointer;
+    font: 400 .92rem var(--sans);
+  }
+  .term .asks button:hover { color: #fff; border-color: #55607a; }
+  .term .asks button[aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: var(--night); font-weight: 600; }
+  .term pre {
+    margin: 0; padding: 1rem 1.25rem 1.5rem;
+    min-height: 19.5rem;
+    color: #d6dbe6; font-size: .8rem; line-height: 1.7;
+    white-space: pre; overflow-x: auto;
+  }
+  .term pre .cmd { color: #fff; font-weight: 600; }
+  .term pre .prompt { color: var(--amber); }
+  .term pre .head { color: var(--night-soft); }
+  .term pre .hit { color: var(--amber); }
+
+  main section { padding: 4.5rem 0; border-bottom: 1px solid var(--line); }
+  main h2 {
+    margin: 0 0 1.5rem;
+    font-size: clamp(1.9rem, 3.5vw, 2.7rem);
+    line-height: 1.08; letter-spacing: -.025em; font-weight: 800;
+    max-width: 22ch;
+  }
+  main p { max-width: 62ch; margin: 0 0 1.1rem; }
+  .two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 3rem; align-items: start; }
+
+  /* Before and after, as the chain of steps it is. */
+  .chain { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  .chain li {
+    counter-increment: step;
+    display: grid; grid-template-columns: 2rem 1fr; gap: .9rem;
+    padding: .7rem 0; border-top: 1px solid var(--line);
+    font-size: 1.02rem;
+  }
+  .chain li::before { content: counter(step); color: var(--soft); font-variant-numeric: tabular-nums; }
+  .chain li code { font-size: .86rem; background: #e9ecf1; padding: .1rem .35rem; border-radius: .3rem; }
+  .chain.one li { border-top: 2px solid var(--orange); }
+  .chain-title { margin: 0 0 .6rem; font-weight: 600; }
+  .chain-title + .chain { margin-bottom: 2.2rem; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 1.02rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: .7rem .9rem .7rem 0; border-top: 1px solid var(--line); }
+  thead th { border-top: 0; color: var(--soft); font-weight: 400; }
+  td.better { font-weight: 600; }
+  td.better span { color: var(--orange); }
+  .note { color: var(--soft); font-size: 1rem; }
+
+  dl.commands { margin: 0; display: grid; grid-template-columns: minmax(0, 22rem) 1fr; }
+  dl.commands dt, dl.commands dd { margin: 0; padding: .8rem 0; border-top: 1px solid var(--line); }
+  dl.commands dt code { font-size: .88rem; font-weight: 600; }
+  dl.commands dd { color: var(--soft); }
+
+  ul.plain { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 3rem; max-width: 40rem; }
+  ul.plain li { padding: .35rem 0; break-inside: avoid; }
+  .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.2rem 3rem; }
+  .facts h3 { margin: 0 0 .4rem; font-size: 1.25rem; font-weight: 600; }
+  .facts p { margin: 0; color: var(--soft); }
+
+  footer { padding: 3rem 0 4rem; color: var(--soft); font-size: 1rem; }
+  footer .install { margin-bottom: 1.5rem; }
+
+  @media (max-width: 860px) {
+    .hero, .two { grid-template-columns: minmax(0, 1fr); gap: 2.2rem; }
+    .hero { padding: 2rem 0 3rem; }
+    dl.commands { grid-template-columns: minmax(0, 1fr); }
+    dl.commands dd { border-top: 0; padding-top: 0; }
+    .facts { grid-template-columns: minmax(0, 1fr); }
+    ul.plain { columns: 1; }
+    nav.bar .links a:not(.keep) { display: none; }
+    main section { padding: 3rem 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <svg class="contours" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <g fill="none" stroke="#dde1e8" stroke-width="1.5">
+      <path d="M-50,520 C150,430 260,560 420,470 S720,330 860,420 1100,520 1260,400"/>
+      <path d="M-50,460 C160,370 280,500 440,410 S730,270 880,360 1110,460 1260,340"/>
+      <path d="M-50,400 C170,310 300,440 460,350 S740,210 900,300 1120,400 1260,280"/>
+      <path d="M-50,340 C180,250 320,380 480,290 S750,150 920,240 1130,340 1260,220"/>
+      <path d="M-50,280 C190,190 340,320 500,230 S760,90 940,180 1140,280 1260,160"/>
+      <path d="M-50,220 C200,130 360,260 520,170 S770,30 960,120 1150,220 1260,100"/>
+      <path d="M-50,160 C210,70 380,200 540,110 S780,-30 980,60 1160,160 1260,40"/>
+      <path d="M-50,580 C140,490 240,620 400,530 S710,390 840,480 1090,580 1260,460"/>
+      <path d="M-50,640 C130,550 220,680 380,590 S700,450 820,540 1080,640 1260,520"/>
+    </g>
+  </svg>
+
+  <div class="wrap">
+    <nav class="bar" aria-label="Main">
+      <a class="name" href="#top"><img src="logo.svg" alt="">codemap</a>
+      <div class="links">
+        <a href="#why">Why</a>
+        <a href="#commands">Commands</a>
+        <a href="#agents">Agents</a>
+        <a class="keep" href="https://github.com/LIVELUCKY/codemap">GitHub</a>
+      </div>
+    </nav>
+
+    <div class="hero" id="top">
+      <div>
+        <h1>Your agent asks once and gets the code.</h1>
+        <p class="lead">codemap indexes the definitions, references and routes of your workspace, across repositories and languages. A coding agent finds what it needs in one call instead of a chain of greps and file reads.</p>
+        <div class="install">
+          <code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/LIVELUCKY/codemap/main/install.sh | sh</code>
+          <button type="button" data-copy="install-cmd">Copy</button>
+        </div>
+        <p class="after">Installs one binary and connects the agents on your machine. macOS and Linux.</p>
+      </div>
+
+      <div class="term" aria-label="Try a question">
+        <div class="asks" role="group" aria-label="Questions">
+          <button type="button" data-ask="def" aria-pressed="true">Where is it defined?</button>
+          <button type="button" data-ask="uses" aria-pressed="false">Who uses it?</button>
+          <button type="button" data-ask="route" aria-pressed="false">Who serves this route?</button>
+          <button type="button" data-ask="typo" aria-pressed="false">I misspelt the name</button>
+          <button type="button" data-ask="words" aria-pressed="false">I only know the topic</button>
+        </div>
+        <pre id="screen" aria-live="polite"></pre>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="why">
+    <div class="wrap two">
+      <div>
+        <h2>Searching is where an agent spends its turns.</h2>
+        <p>To find one thing in a large code base, an agent greps, reads a file, greps again and reads some more. Each step is a round trip to the model, and every result stays in its context, most of it lines nobody needed.</p>
+        <p>Grep also cannot tell a definition from a mention, does not follow a name from Kotlin into Swift, and has to be told which repository to look in.</p>
+        <p>codemap answers the question the agent actually has, as one short ranked list. Main code comes before tests and generated files, and a single definition comes with its code.</p>
+      </div>
+      <div>
+        <p class="chain-title">Without codemap</p>
+        <ol class="chain">
+          <li><span><code>grep -rn "BookPort" .</code> and a screen of matches</span></li>
+          <li><span>Read the file that looks like the definition</span></li>
+          <li><span><code>grep -rn "BookPort" ../server ../web</code> for the other repositories</span></li>
+          <li><span>Read again to tell uses from mentions</span></li>
+        </ol>
+        <p class="chain-title">With codemap</p>
+        <ol class="chain one">
+          <li><span><code>codemap uses BookPort</code> and the answer</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section id="measured">
+    <div class="wrap two">
+      <div>
+        <h2>Measured on a real workspace.</h2>
+        <p>Five repositories, about 5,300 files. Nine navigation questions, three runs each, with Claude Haiku in headless Claude Code and read-only tools. Nothing told the model which tool to prefer; it reached for codemap by itself.</p>
+        <p class="note">What the numbers do not say: codemap was not more correct on these questions, because grep gets them right too, and the bill was the same within a fraction of a cent. The gain is fewer round trips and less context spent on search output.</p>
+      </div>
+      <div>
+        <table>
+          <thead>
+            <tr><th scope="col">Median per question</th><th scope="col">Without</th><th scope="col">With codemap</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Turns</th><td>3</td><td class="better">2 <span>a third fewer</span></td></tr>
+            <tr><th scope="row">Tokens read</th><td>126,210</td><td class="better">84,112 <span>a third fewer</span></td></tr>
+            <tr><th scope="row">Seconds</th><td>5.3</td><td>5.0</td></tr>
+            <tr><th scope="row">Correct answers</th><td>27 of 27</td><td>27 of 27</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="commands">
+    <div class="wrap">
+      <h2>One command for most questions.</h2>
+      <dl class="commands">
+        <dt><code>codemap BookRoute</code></dt><dd>Where it is defined, with its code. Works with half a name or a typo.</dd>
+        <dt><code>codemap token refresh</code></dt><dd>A few words when you do not know the name. Searches by words and by meaning.</dd>
+        <dt><code>codemap ic_logo</code></dt><dd>A file or an asset by its name, with or without the extension.</dd>
+        <dt><code>codemap uses BookPort</code></dt><dd>Who calls or references it, in every language and repository.</dd>
+        <dt><code>codemap impl BookPort</code></dt><dd>What extends or implements it, tests last.</dd>
+        <dt><code>codemap link '/api/v1/books/{id}'</code></dt><dd>The client, the server and the tests of one endpoint.</dd>
+        <dt><code>codemap grep 'retry|backoff'</code></dt><dd>A regex over every repository at once, gitignored files left out.</dd>
+        <dt><code>docker logs api | codemap logs</code></dt><dd>The gist of a log: repeats counted, errors first, stack traces kept.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section id="agents">
+    <div class="wrap two">
+      <div>
+        <h2>Works with the agent you already use.</h2>
+        <p>Claude Code gets a plugin: a short session prompt, and a hook that answers the agent's own grep and rg calls from the index. Every other agent gets four MCP tools.</p>
+        <p><code>codemap setup</code> finds the agents on your machine and adds one entry to each. It keeps a backup of every file it touches.</p>
+      </div>
+      <ul class="plain">
+        <li>Claude Code</li>
+        <li>Codex</li>
+        <li>Cursor</li>
+        <li>GitHub Copilot CLI</li>
+        <li>VS Code Copilot Chat</li>
+        <li>Gemini CLI</li>
+        <li>Antigravity</li>
+        <li>JetBrains Junie</li>
+        <li>Windsurf</li>
+        <li>Zed</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <h2>Small on the outside.</h2>
+      <div class="facts">
+        <div>
+          <h3>Nothing to build or refresh</h3>
+          <p>The index follows the git tree. A branch switch, a pull or an edit is seen on the next query, and only changed files are parsed again. Five repositories index in about a second.</p>
+        </div>
+        <div>
+          <h3>35 languages, and files that are not code</h3>
+          <p>tree-sitter grammars for Kotlin, Swift, TypeScript, Python, Go, Rust, Java, SQL, Terraform and more. Images and other assets are found by name, and by the layouts that use them.</p>
+        </div>
+        <div>
+          <h3>Finds things you describe</h3>
+          <p>A code embedding model is compiled into the binary, so "database access object for orders" finds <code>OrderDao</code>. Typos are corrected against the names in your own code.</p>
+        </div>
+        <div>
+          <h3>Stays on your machine</h3>
+          <p>No server, no account, no network call while answering. One binary, and <code>git</code> is the only thing it needs.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="install">
+      <code id="install-cmd-2">curl -fsSL https://raw.githubusercontent.com/LIVELUCKY/codemap/main/install.sh | sh</code>
+      <button type="button" data-copy="install-cmd-2">Copy</button>
+    </div>
+    <p>MIT licensed. Source, documentation and releases on <a href="https://github.com/LIVELUCKY/codemap">GitHub</a>.</p>
+    <p>Made by <a href="https://www.linkedin.com/in/0-nazmi/" rel="me noopener">Nazmi Ahmad</a>.</p>
+  </div>
+</footer>
+
+<script>
+  // Real answers from the sample workspace in tests/fixtures/workspace.
+  const answers = {
+    def: ["codemap BookRoute", [
+      ["head", "# show BookRoute (1 definition)"],
+      ["hit", "src/commonMain/kotlin/app/BookRoute.kt:11-12 class BookRoute"],
+      ["", "  11 | @Resource(\"/api/v1/books/{id}\")"],
+      ["", "  12 | class BookRoute(val id: String)"],
+    ]],
+    uses: ["codemap uses BookPort", [
+      ["head", "# index (grammar)"],
+      ["hit", "src/commonMain/kotlin/app/BookRoute.kt:7 class BookRepositoryImpl 2x"],
+      ["hit", "src/commonTest/kotlin/app/FakeBookPort.kt:3 class FakeBookPort [test] 2x"],
+    ]],
+    route: ["codemap link '/api/v1/books/{id}'", [
+      ["head", "# index (grammar)"],
+      ["hit", "src/commonMain/kotlin/app/BookRoute.kt:11 literal /api/v1/books/{id} in:BookRoute"],
+      ["hit", "../server/src/main/kotlin/server/Routes.kt:3 literal /api/v1/books/{id} in:BookRoute"],
+      ["hit", "../web/src/api.ts:1 literal /api/v1/books/{id} in:BOOK_URL"],
+    ]],
+    typo: ["codemap BokRoute", [
+      ["head", "# index (grammar)"],
+      ["head", "no definition named BokRoute; the closest names:"],
+      ["hit", "src/commonMain/kotlin/app/BookRoute.kt:12 class BookRoute @Resource"],
+    ]],
+    words: ["codemap book route", [
+      ["head", "# fts (words)"],
+      ["hit", "src/commonMain/kotlin/app/BookRoute.kt:12 text BookRoute"],
+      ["hit", "../server/src/main/kotlin/server/Routes.kt:4 text BookRoute"],
+      ["", "../server/src/test/kotlin/server/RoutesTest.kt:4 text `book route round trips` [test]"],
+      ["", "ios/App.swift:6 text route"],
+      ["", "../web/src/"],
+      ["", "  api.ts:1 text BOOK_URL"],
+    ]],
+  };
+
+  const screen = document.getElementById("screen");
+  function show(key) {
+    const [command, lines] = answers[key];
+    screen.textContent = "";
+    const first = document.createElement("span");
+    const prompt = document.createElement("span");
+    prompt.className = "prompt";
+    prompt.textContent = "$ ";
+    const cmd = document.createElement("span");
+    cmd.className = "cmd";
+    cmd.textContent = command + "\n";
+    first.append(prompt, cmd);
+    screen.append(first);
+    for (const [kind, text] of lines) {
+      const line = document.createElement("span");
+      if (kind) line.className = kind;
+      line.textContent = text + "\n";
+      screen.append(line);
+    }
+    for (const button of document.querySelectorAll("[data-ask]")) {
+      button.setAttribute("aria-pressed", String(button.dataset.ask === key));
+    }
+  }
+  for (const button of document.querySelectorAll("[data-ask]")) {
+    button.addEventListener("click", () => show(button.dataset.ask));
+  }
+  show("def");
+
+  for (const button of document.querySelectorAll("[data-copy]")) {
+    button.addEventListener("click", async () => {
+      const text = document.getElementById(button.dataset.copy).textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = "Copied";
+      } catch {
+        button.textContent = "Select and copy";
+      }
+      setTimeout(() => { button.textContent = "Copy"; }, 1800);
+    });
+  }
+</script>
+</body>
+</html>

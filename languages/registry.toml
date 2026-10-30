@@ -1,0 +1,193 @@
+# The language registry. build.rs turns this into the Language enum, the extension map and the grammar
+# table. One entry per language: `name`, `extensions`, optionally `variant` (the enum variant when it is
+# not the capitalised name), `filenames` (whole file names without an extension, `Makefile`), `crate` (the Rust path of the grammar's LanguageFn constant), `query` (the
+# folder under languages/ when it is not the name; tsx shares typescript) and `upstream_tags = false`
+# when the grammar's own tags query is not worth syncing. An entry without `crate` is parsed by the
+# regex tier.
+#
+# languages/<folder>/tags.scm is the upstream copy written by scripts/sync-queries; extra.scm holds the
+# additions for codemap. build.rs concatenates the two.
+
+[[language]]
+name = "kotlin"
+extensions = ["kt", "kts"]
+crate = "tree_sitter_kotlin_ng::LANGUAGE"
+
+[[language]]
+name = "swift"
+extensions = ["swift"]
+crate = "tree_sitter_swift::LANGUAGE"
+# upstream tags put every member on the line of its class; the extra.scm query is complete on its own
+upstream_tags = false
+
+[[language]]
+name = "typescript"
+variant = "TypeScript"
+extensions = ["ts", "mts", "cts"]
+crate = "tree_sitter_typescript::LANGUAGE_TYPESCRIPT"
+
+[[language]]
+name = "tsx"
+extensions = ["tsx"]
+crate = "tree_sitter_typescript::LANGUAGE_TSX"
+query = "typescript"
+
+[[language]]
+name = "javascript"
+variant = "JavaScript"
+extensions = ["js", "mjs", "cjs", "jsx"]
+crate = "tree_sitter_javascript::LANGUAGE"
+
+[[language]]
+name = "python"
+extensions = ["py"]
+crate = "tree_sitter_python::LANGUAGE"
+
+[[language]]
+name = "go"
+extensions = ["go"]
+crate = "tree_sitter_go::LANGUAGE"
+
+[[language]]
+name = "rust"
+extensions = ["rs"]
+crate = "tree_sitter_rust::LANGUAGE"
+
+[[language]]
+name = "java"
+extensions = ["java"]
+crate = "tree_sitter_java::LANGUAGE"
+
+[[language]]
+name = "c"
+extensions = ["c", "h"]
+crate = "tree_sitter_c::LANGUAGE"
+
+[[language]]
+name = "cpp"
+extensions = ["cc", "cpp", "cxx", "hpp", "hh"]
+crate = "tree_sitter_cpp::LANGUAGE"
+
+[[language]]
+name = "csharp"
+variant = "CSharp"
+extensions = ["cs"]
+crate = "tree_sitter_c_sharp::LANGUAGE"
+
+[[language]]
+name = "ruby"
+extensions = ["rb"]
+crate = "tree_sitter_ruby::LANGUAGE"
+
+[[language]]
+name = "php"
+extensions = ["php"]
+crate = "tree_sitter_php::LANGUAGE_PHP"
+
+[[language]]
+name = "scala"
+extensions = ["scala", "sc"]
+crate = "tree_sitter_scala::LANGUAGE"
+
+[[language]]
+name = "dart"
+extensions = ["dart"]
+crate = "tree_sitter_dart::LANGUAGE"
+
+[[language]]
+name = "lua"
+extensions = ["lua"]
+crate = "tree_sitter_lua::LANGUAGE"
+
+[[language]]
+name = "elixir"
+extensions = ["ex", "exs"]
+crate = "tree_sitter_elixir::LANGUAGE"
+
+[[language]]
+name = "haskell"
+extensions = ["hs"]
+crate = "tree_sitter_haskell::LANGUAGE"
+
+[[language]]
+name = "ocaml"
+extensions = ["ml"]
+crate = "tree_sitter_ocaml::LANGUAGE_OCAML"
+
+[[language]]
+name = "zig"
+extensions = ["zig"]
+crate = "tree_sitter_zig::LANGUAGE"
+
+[[language]]
+name = "bash"
+extensions = ["sh", "bash", "zsh"]
+crate = "tree_sitter_bash::LANGUAGE"
+
+[[language]]
+name = "html"
+extensions = ["html", "htm"]
+crate = "tree_sitter_html::LANGUAGE"
+
+[[language]]
+name = "css"
+extensions = ["css"]
+crate = "tree_sitter_css::LANGUAGE"
+
+[[language]]
+name = "markdown"
+extensions = ["md", "markdown"]
+crate = "tree_sitter_md::LANGUAGE"
+
+[[language]]
+name = "json"
+extensions = ["json"]
+crate = "tree_sitter_json::LANGUAGE"
+
+[[language]]
+name = "yaml"
+extensions = ["yaml", "yml"]
+crate = "tree_sitter_yaml::LANGUAGE"
+
+[[language]]
+name = "toml"
+extensions = ["toml"]
+crate = "tree_sitter_toml_ng::LANGUAGE"
+
+[[language]]
+name = "xml"
+extensions = ["xml", "xsd", "xsl", "xslt", "svg", "plist", "csproj", "storyboard", "xib"]
+crate = "tree_sitter_xml::LANGUAGE_XML"
+
+[[language]]
+name = "sql"
+extensions = ["sql"]
+crate = "tree_sitter_sequel::LANGUAGE"
+
+[[language]]
+name = "proto"
+extensions = ["proto"]
+crate = "tree_sitter_proto::LANGUAGE"
+
+[[language]]
+name = "graphql"
+variant = "GraphQl"
+extensions = ["graphql", "graphqls", "gql"]
+crate = "tree_sitter_graphql::LANGUAGE"
+
+[[language]]
+name = "hcl"
+extensions = ["hcl", "tf", "tfvars"]
+crate = "tree_sitter_hcl::LANGUAGE"
+
+[[language]]
+name = "make"
+extensions = ["mk"]
+filenames = ["Makefile", "makefile", "GNUmakefile"]
+crate = "tree_sitter_make::LANGUAGE"
+
+[[language]]
+name = "objc"
+variant = "ObjC"
+extensions = ["m", "mm"]
+crate = "tree_sitter_objc::LANGUAGE"

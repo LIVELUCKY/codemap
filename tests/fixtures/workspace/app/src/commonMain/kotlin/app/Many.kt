@@ -1,0 +1,32 @@
+package app
+
+fun same(a: Int) = a
+fun same(a: Long) = a
+fun same(a: Short) = a
+fun same(a: Byte) = a
+fun same(a: Float) = a
+fun same(a: Double) = a
+fun same(a: Char) = a
+fun same(a: String) = a
+fun same(a: Boolean) = a
+fun same(a: List<Int>) = a
+fun same(a: List<Long>) = a
+fun same(a: List<Short>) = a
+fun same(a: List<Byte>) = a
+fun same(a: List<Float>) = a
+fun same(a: List<Double>) = a
+fun same(a: List<Char>) = a
+fun same(a: List<String>) = a
+fun same(a: List<Boolean>) = a
+fun same(a: Set<Int>) = a
+fun same(a: Set<Long>) = a
+fun same(a: Set<Short>) = a
+fun same(a: Set<Byte>) = a
+fun same(a: Set<Float>) = a
+fun same(a: Set<Double>) = a
+fun same(a: Set<Char>) = a
+fun same(a: Set<String>) = a
+fun same(a: Set<Boolean>) = a
+fun same(a: Map<Int, Int>) = a
+fun same(a: Map<Long, Long>) = a
+fun same(a: Map<String, String>) = a
