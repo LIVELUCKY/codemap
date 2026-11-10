@@ -28,7 +28,10 @@ fn version_prints_crate_version() {
         .arg("--version")
         .output()
         .unwrap();
-    assert!(String::from_utf8_lossy(&out.stdout).starts_with("codemap 0.1.0"));
+    assert!(
+        String::from_utf8_lossy(&out.stdout)
+            .starts_with(concat!("codemap ", env!("CARGO_PKG_VERSION")))
+    );
 }
 
 #[test]

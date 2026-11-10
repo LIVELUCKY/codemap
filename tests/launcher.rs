@@ -97,7 +97,14 @@ fn cargo_bin_is_second_then_checkout_then_local_bin() {
 #[test]
 fn cached_download_is_used_without_network() {
     let sb = sandbox();
-    fake(&sb.cache.join("codemap/bin/0.1.0/codemap"), "cached");
+    fake(
+        &sb.cache.join(concat!(
+            "codemap/bin/",
+            env!("CARGO_PKG_VERSION"),
+            "/codemap"
+        )),
+        "cached",
+    );
     assert_eq!(launch(&sb, &["a"], &[], true).1, "cached a");
 }
 
@@ -166,7 +173,15 @@ fn download_verifies_checksum() {
     );
     assert_eq!((code, stdout.as_str()), (1, ""), "{stderr}");
     assert!(stderr.contains("checksum mismatch"), "{stderr}");
-    assert!(!sb.cache.join("codemap/bin/0.1.0/codemap").exists());
+    assert!(
+        !sb.cache
+            .join(concat!(
+                "codemap/bin/",
+                env!("CARGO_PKG_VERSION"),
+                "/codemap"
+            ))
+            .exists()
+    );
 }
 
 #[test]
@@ -179,7 +194,15 @@ fn download_with_the_right_checksum_runs_and_caches() {
         ("CODEMAP_TARGET", Path::new("test-target")),
     ];
     assert_eq!(launch(&sb, &["def", "X"], env, false).1, "downloaded def X");
-    assert!(sb.cache.join("codemap/bin/0.1.0/codemap").exists());
+    assert!(
+        sb.cache
+            .join(concat!(
+                "codemap/bin/",
+                env!("CARGO_PKG_VERSION"),
+                "/codemap"
+            ))
+            .exists()
+    );
     assert_eq!(
         launch(&sb, &["again"], &[], true).1,
         "downloaded again",
