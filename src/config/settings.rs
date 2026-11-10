@@ -80,6 +80,8 @@ pub struct Search {
     pub stemmer: Option<rust_stemmers::Algorithm>,
     /// The share of the best fuzzy score a name needs to be listed next to it.
     pub fuzzy_keep: f64,
+    /// The share of a fuzzy match the query must make up for the match to count as a close name.
+    pub fuzzy_cover: f64,
     /// The lowest Damerau-Levenshtein similarity a name needs to count as a typo of another.
     pub typo_similarity: f64,
     pub stopwords: Vec<String>,

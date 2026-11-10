@@ -68,17 +68,20 @@ fn a_misspelt_word_is_searched_as_the_closest_word_of_the_code_base() {
 #[test]
 fn search_with_no_hit_is_explicit() {
     let f = workspace(None);
-    let answer = search(&f.ws, "zzzz", false);
+    let answer = search(&f.ws, "ZzzzThing", false);
     assert!(answer.lines.is_empty());
     assert!(render(&answer).contains("no match"));
     // A description none of whose words is anywhere still gets the closest files, and is told so:
-    // the agent judges them.
-    let described = search(&f.ws, "zzzz qqqq", false);
-    assert!(!described.lines.is_empty());
-    assert_eq!(
-        described.notes,
-        ["no file has these words; the closest by meaning:"]
-    );
+    // the agent judges them. One plain word is a description too.
+    for described in ["zzzz qqqq", "frontend"] {
+        let answer = search(&f.ws, described, false);
+        assert!(!answer.lines.is_empty(), "{described}");
+        assert_eq!(
+            answer.notes,
+            ["no file has these words; the closest by meaning:"],
+            "{described}"
+        );
+    }
 }
 
 #[test]

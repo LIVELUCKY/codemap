@@ -284,7 +284,7 @@ per repository that is faster than keeping a vector index.
 
 The closest files join the word ranking: files that both found come first, then the two take turns.
 When no file holds any of the words, the answer lists the closest files and says that it did. A
-single unknown name still answers `no match`. All of this is part of `codemap <a few words>`; there
+single unknown name such as `OrderDao` still answers `no match`. All of this is part of `codemap <a few words>`; there
 is no extra command. `search.semanticFiles = 0` turns it off.
 
 ## Measured

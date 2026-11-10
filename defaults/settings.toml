@@ -66,6 +66,10 @@ stemmer = "English"
 # A name whose letters appear in order in other names (BaseVM): the share of the best match's score
 # another name needs to be listed too, so weak scattered matches are left out.
 fuzzyKeep = 0.5
+# The share of such a name the query's letters must make up for the name to count as close: `BRepoImpl`
+# is half of `BookRepositoryImpl`, while the letters of `frontend` scattered over a test name of sixty
+# letters say nothing about it. A query with only far longer matches is searched by words instead.
+fuzzyCover = 0.3
 # When no name has the letters in order: how alike two names must be, by Damerau-Levenshtein
 # similarity from 0 to 1 (a swapped pair of letters is one edit), for one to count as a typo of the other.
 typoSimilarity = 0.8

@@ -244,9 +244,11 @@ pub fn search(ws: &Workspace, query: &str, all: bool) -> Answer {
             .then_with(|| a.3.path.cmp(&b.3.path))
     });
     let by_words: Vec<Line> = scored.into_iter().map(|(_, _, _, line)| line).collect();
-    // A single word nothing holds is a name that does not exist, and "no match" says so; a
-    // description is what the meaning is for.
-    let described = !by_words.is_empty() || tokens(query).len() > 1;
+    // A single name nothing holds (`OrderDao`, `order_dao`) does not exist, and "no match" says so.
+    // Several words, or one plain word (`frontend`), describe something: that is what the meaning
+    // is for.
+    let plain_word = query.chars().all(|c| c.is_lowercase());
+    let described = !by_words.is_empty() || tokens(query).len() > 1 || plain_word;
     let wanted = (rules.semantic_files > 0 && described)
         .then(|| embed::embed(query))
         .flatten();

@@ -3,6 +3,10 @@
 
 use std::collections::BTreeMap;
 
+#[cfg(test)]
+#[path = "../../tests/unit/query/mod.rs"]
+mod tests;
+
 pub mod bridge;
 pub mod deps;
 pub mod find;
@@ -149,7 +153,11 @@ pub fn def(ws: &Workspace, name: &str) -> Answer {
     if !hits.is_empty() {
         return answer(hits);
     }
-    let nearest = fuzzy(ws, name, ws.config.settings.limits.nearest_names);
+    let cover = ws.config.settings.search.fuzzy_cover;
+    let nearest: Vec<String> = fuzzy(ws, name, ws.config.settings.limits.nearest_names)
+        .into_iter()
+        .filter(|close| covers(name, close, cover))
+        .collect();
     if nearest.is_empty() {
         let mut answer = search::search(ws, name, false);
         answer.notes.insert(
@@ -167,6 +175,12 @@ pub fn def(ws: &Workspace, name: &str) -> Answer {
         .notes
         .push(format!("no definition named {name}; the closest names:"));
     answer
+}
+
+/// Whether `query` makes up at least `share` of `name`: a few letters found in order somewhere in a
+/// far longer name do not make that name close.
+pub fn covers(query: &str, name: &str, share: f64) -> bool {
+    query.chars().count() as f64 >= name.chars().count() as f64 * share
 }
 
 /// The definition names of the project closest to `name`, best first: the Helix matcher for letters
