@@ -29,7 +29,7 @@ fn call(f: &Fixture, name: &str, arguments: Value) -> String {
 #[test]
 fn the_tool_list_is_short_and_every_tool_has_a_schema() {
     let tools = codemap::agent::mcp::tools();
-    let names: Vec<&str> = tools.iter().map(|t| t.name.as_ref()).collect();
+    let names: Vec<&str> = tools.iter().map(|t| t.name).collect();
     assert_eq!(
         names,
         [
@@ -41,11 +41,7 @@ fn the_tool_list_is_short_and_every_tool_has_a_schema() {
     );
     for tool in &tools {
         assert_eq!(tool.input_schema["type"], "object", "{}", tool.name);
-        assert!(
-            tool.description.as_deref().is_some_and(|d| d.len() > 20),
-            "{}",
-            tool.name
-        );
+        assert!(tool.description.len() > 20, "{}", tool.name);
     }
 }
 
@@ -158,6 +154,22 @@ fn the_binary_speaks_mcp_over_stdio() {
             .as_str()
             .is_some_and(|t| t.contains("BookRoute.kt:12")),
         "{answer}"
+    );
+    send(json!({"jsonrpc": "2.0", "id": 3, "method": "tools/list"}));
+    let listed = reply();
+    assert_eq!(
+        listed["result"]["tools"][0]["name"], "codemap_lookup",
+        "{listed}"
+    );
+    assert_eq!(
+        listed["result"]["tools"][0]["inputSchema"]["type"], "object",
+        "{listed}"
+    );
+    send(json!({"jsonrpc": "2.0", "id": 4, "method": "resources/list"}));
+    assert_eq!(
+        reply()["error"]["code"],
+        -32601,
+        "an unknown method is said to be one"
     );
     drop(send);
     child.kill().ok();

@@ -160,8 +160,7 @@ download) and does nothing if there is none.
 
 Other agents get four MCP tools: `codemap_lookup`, `codemap_uses`, `codemap_impl` and
 `codemap_grep`. The list is short on purpose, since every extra tool is one more choice for the
-model. The server uses [rmcp](https://github.com/modelcontextprotocol/rust-sdk), the official Rust
-MCP SDK.
+model.
 
 ## Configuration
 

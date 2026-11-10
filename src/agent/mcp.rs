@@ -1,20 +1,14 @@
 //! `codemap mcp`: a Model Context Protocol server over stdio, so agents without Claude-style hooks
 //! (Codex, Gemini CLI, Antigravity, Cursor and any other MCP client) get the same index as tools.
 //!
-//! The protocol is rmcp's, the official Rust SDK; this file only lists the tools and answers them.
-//! The list is short on purpose: every extra tool is one more choice a small model has to get right.
+//! The protocol is JSON-RPC, one message per line; a server that only offers tools needs four
+//! methods of it, which are answered here. The list is short on purpose: every extra tool is one more choice a small model has to get right.
 //! Every call discovers its workspace afresh, so answers follow the working tree like every other command.
 
+use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::Duration;
 
-use rmcp::model::{
-    CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
-    ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig, Tool,
-};
-use rmcp::service::RequestContext;
-use rmcp::{ErrorData, RoleServer, ServerHandler, ServiceExt};
 use serde_json::{Value, json};
 
 use crate::output::{Answer, render};
@@ -25,6 +19,17 @@ use crate::workspace::{Workspace, discover};
 /// Finds the workspace of a directory; a parameter so tests can point it at a fixture cache.
 pub type Open<'a> = &'a dyn Fn(&Path) -> anyhow::Result<Workspace>;
 
+/// The protocol version answered when the client asks for one this server does not know.
+const PROTOCOL: &str = "2025-06-18";
+
+/// One tool as `tools/list` describes it.
+#[derive(Debug, Clone)]
+pub struct Tool {
+    pub name: &'static str,
+    pub description: &'static str,
+    pub input_schema: Value,
+}
+
 fn tool(
     name: &'static str,
     description: &'static str,
@@ -34,11 +39,11 @@ fn tool(
     let mut properties = properties;
     properties["directory"] = json!({"type": "string", "description": "A folder inside the repository to work in; defaults to the server's working directory."});
     properties["all"] = json!({"type": "boolean", "description": "Every line of an answer that ended with `... N more (--all)`."});
-    let schema = json!({"type": "object", "properties": properties, "required": required});
-    let Value::Object(schema) = schema else {
-        unreachable!()
-    };
-    Tool::new(name, description, Arc::new(schema))
+    Tool {
+        name,
+        description,
+        input_schema: json!({"type": "object", "properties": properties, "required": required}),
+    }
 }
 
 pub fn tools() -> Vec<Tool> {
@@ -156,44 +161,43 @@ pub fn call(name: &str, arguments: &Value, cwd: &Path, open: Open) -> (String, b
     }
 }
 
-struct Server {
-    cwd: PathBuf,
-    instructions: String,
-}
-
-impl ServerHandler for Server {
-    fn get_info(&self) -> ServerConfig {
-        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new(
-                env!("CARGO_PKG_NAME"),
-                env!("CARGO_PKG_VERSION"),
-            ))
-            .with_instructions(self.instructions.clone())
-    }
-
-    async fn list_tools(
-        &self,
-        _request: Option<PaginatedRequestParams>,
-        _context: RequestContext<RoleServer>,
-    ) -> Result<ListToolsResult, ErrorData> {
-        Ok(ListToolsResult::with_all_items(tools()))
-    }
-
-    async fn call_tool(
-        &self,
-        request: CallToolRequestParams,
-        _context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResponse, ErrorData> {
-        let arguments = Value::Object(request.arguments.unwrap_or_default());
-        let (text, is_error) = call(&request.name, &arguments, &self.cwd, &discover);
-        let content = vec![ContentBlock::text(text)];
-        Ok(if is_error {
-            CallToolResult::error(content)
-        } else {
-            CallToolResult::success(content)
+/// The reply to one message, `None` for a notification: `initialize`, `ping`, `tools/list` and
+/// `tools/call` are answered, any other request is an unknown method.
+pub fn respond(message: &Value, cwd: &Path, instructions: &str, open: Open) -> Option<Value> {
+    let id = message.get("id").filter(|id| !id.is_null())?.clone();
+    let params = message.get("params").cloned().unwrap_or(Value::Null);
+    let result = match message.get("method").and_then(Value::as_str) {
+        Some("initialize") => {
+            let asked = params.get("protocolVersion").and_then(Value::as_str);
+            json!({
+                "protocolVersion": asked.unwrap_or(PROTOCOL),
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": env!("CARGO_PKG_NAME"), "version": env!("CARGO_PKG_VERSION")},
+                "instructions": instructions
+            })
         }
-        .into())
-    }
+        Some("ping") => json!({}),
+        Some("tools/list") => json!({"tools": tools().iter().map(|t| json!({
+            "name": t.name, "description": t.description, "inputSchema": t.input_schema
+        })).collect::<Vec<_>>()}),
+        Some("tools/call") => {
+            let name = params
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let arguments = params
+                .get("arguments")
+                .cloned()
+                .unwrap_or_else(|| json!({}));
+            let (text, is_error) = call(name, &arguments, cwd, open);
+            json!({"content": [{"type": "text", "text": text}], "isError": is_error})
+        }
+        _ => {
+            return Some(json!({"jsonrpc": "2.0", "id": id,
+                "error": {"code": -32601, "message": "method not found"}}));
+        }
+    };
+    Some(json!({"jsonrpc": "2.0", "id": id, "result": result}))
 }
 
 /// Indexes the workspace inside the start budget, then serves until stdin closes.
@@ -214,19 +218,22 @@ pub fn serve(cwd: &Path) -> anyhow::Result<()> {
             .mcp
             .replace("{repositories}", "the repository you work in"),
     };
-    let server = Server {
-        cwd: cwd.to_path_buf(),
-        instructions,
-    };
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?
-        .block_on(async {
-            server
-                .serve(rmcp::transport::stdio())
-                .await?
-                .waiting()
-                .await?;
-            anyhow::Ok(())
-        })
+    let stdin = std::io::stdin().lock();
+    let mut stdout = std::io::stdout().lock();
+    for line in stdin.lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let reply = match serde_json::from_str::<Value>(&line) {
+            Ok(message) => respond(&message, cwd, &instructions, &discover),
+            Err(_) => Some(json!({"jsonrpc": "2.0", "id": null,
+                "error": {"code": -32700, "message": "parse error"}})),
+        };
+        if let Some(reply) = reply {
+            writeln!(stdout, "{reply}")?;
+            stdout.flush()?;
+        }
+    }
+    Ok(())
 }
